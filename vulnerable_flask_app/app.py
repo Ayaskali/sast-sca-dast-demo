@@ -3,7 +3,7 @@ from flask import Flask, request
 from markupsafe import escape
 
 app = Flask(__name__)
-# Correction 1 : secret lu depuis une variable d'environnement (plus de secret en dur)
+# Correction 1 : secret lu depuis une variable d'environnement
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", os.urandom(32))
 
 # Correction 2 : en-tetes de securite HTTP
@@ -25,8 +25,9 @@ def hello():
     name = escape(request.args.get('name', 'Guest'))
     return f"<h1>Hello Page</h1><p>Hello, {name}!</p><p><a href='/'>Back</a></p>"
 
-# Correction 4 : routes /execute (injection de commandes) et /admin (fuite du secret) supprimees
+# Correction 4 : routes /execute et /admin supprimees
 
 if __name__ == '__main__':
-    # Correction 5 : mode debug desactive par defaut
-    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", host='0.0.0.0')
+    # Correction 5 : debug desactive, ecoute locale par defaut (0.0.0.0 fourni par Docker)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1",
+            host=os.environ.get("APP_HOST", "127.0.0.1"))

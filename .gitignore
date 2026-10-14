@@ -1,2 +1,6 @@
 venv/
 zap_rapport_local.html
+.coverage
+coverage.xml
+__pycache__/
+.pytest_cache/

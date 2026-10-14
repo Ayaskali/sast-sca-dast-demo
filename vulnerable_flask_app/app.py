@@ -1,52 +1,32 @@
+import os
 from flask import Flask, request
-import subprocess
+from markupsafe import escape
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = "verysecretkey123" # Hardcoded secret!
+# Correction 1 : secret lu depuis une variable d'environnement (plus de secret en dur)
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", os.urandom(32))
+
+# Correction 2 : en-tetes de securite HTTP
+@app.after_request
+def security_headers(resp):
+    resp.headers["Content-Security-Policy"] = "default-src 'self'"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    return resp
 
 @app.route('/')
 def index():
-    return """
-    <h1>Welcome to our vulnerable Flask App! 😎</h1>
-    <p>Explore the different pages:</p>
-    <ul>
-        <li><a href="/hello?name=World">Hello Page (try changing the name in the URL!)</a></li>
-        <li><a href="/execute?cmd=ls -la">Execute Command Page (try changing the command in the URL!)</a></li>
-        <li><a href="/admin">Admin Area (contains a secret!)</a></li>
-    </ul>
-    
-    <a href="https://github.com/pandelig/sast-sca-dast-demo" target="_blank">GitHub Repo↗</a></li>
-    """
+    return '<h1>Welcome</h1><ul><li><a href="/hello?name=World">Hello Page</a></li></ul>'
 
+# Correction 3 : echappement de l'entree utilisateur (XSS)
 @app.route('/hello')
 def hello():
-    name = request.args.get('name', 'Guest')
-    return f"""
-    <h1>Hello Page</h1>
-    <p>Hello, {name}!</p>
-    <p><a href="/">Back to Homepage</a></p>
-    """
+    name = escape(request.args.get('name', 'Guest'))
+    return f"<h1>Hello Page</h1><p>Hello, {name}!</p><p><a href='/'>Back</a></p>"
 
-@app.route('/execute')
-def execute():
-    command = request.args.get('cmd', 'ls -l')
-    # Insecure command execution!
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    return f"""
-    <h1>Execute Command Page</h1>
-    <p>Executing command: <code>{command}</code></p>
-    <pre>{result.stdout}</pre>
-    <pre style="color: red;">{result.stderr}</pre>
-    <p><a href="/">Back to Homepage</a></p>
-    """
-
-@app.route('/admin')
-def admin():
-    return f"""
-    <h1>Admin Area</h1>
-    <p>Admin area - Secret Key: {app.config['SECRET_KEY']}</p>
-    <p><a href="/">Back to Homepage</a></p>
-    """
+# Correction 4 : routes /execute (injection de commandes) et /admin (fuite du secret) supprimees
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    # Correction 5 : mode debug desactive par defaut
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", host='0.0.0.0')
